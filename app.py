@@ -130,11 +130,15 @@ class NoteView(MethodView):
 
     @jwt.login_required
     def get(self, current_user):
-        title = request.json.get('title', None)
+        title = request.args.get("title", None)
         if(title):
             notes = current_user.notes.filter_by(title=title).all()
             output = list(map(lambda x: x.get_dict(), notes))
             return jsonify({'notes': output})
+        else:
+            notes = current_user.notes.all()
+            output = list(map(lambda x: x.get_dict(), notes))
+            return jsonify({"notes": output})
 
     @jwt.login_required
     def delete(self, current_user):
@@ -146,7 +150,8 @@ class NoteView(MethodView):
 
 
 note_view = NoteView.as_view('note_api')
-app.add_url_rule('/note/', view_func=note_view, methods=['GET', 'POST'])
+app.add_url_rule('/note/', view_func=note_view,
+                 methods=['GET', 'POST', "DELETE"])
 
 
 if __name__ == "__main__":
