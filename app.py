@@ -32,9 +32,6 @@ def filter_dict(a: dict, escape_keys: list) -> dict:
     return dict(filter(lambda key: key[0] not in escape_keys, a.items()))
 
 
-db.drop_all()
-
-
 class User(db.Model):
     __tablename__ = "user"
 
@@ -76,9 +73,6 @@ class Note(db.Model):
             'content': self.content,
             "id": self.id
         }
-
-
-db.create_all()
 
 # Views from here
 
@@ -142,10 +136,19 @@ class NoteView(MethodView):
             output = list(map(lambda x: x.get_dict(), notes))
             return jsonify({'notes': output})
 
+    @jwt.login_required
+    def delete(self, current_user):
+        id = request.json['id']
+        note = current_user.notes.filter_by(id=id).first()
+        db.session.delete(note)
+        db.session.commit()
+        return jsonify({'success': "note deleted"}), 201
+
 
 note_view = NoteView.as_view('note_api')
 app.add_url_rule('/note/', view_func=note_view, methods=['GET', 'POST'])
 
 
 if __name__ == "__main__":
+    db.create_all()
     app.run(debug=True)
