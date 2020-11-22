@@ -3,6 +3,8 @@ from flask import Flask, jsonify, request, url_for, render_template, redirect, f
 from flask.views import MethodView
 from flask_sqlalchemy import SQLAlchemy
 import os
+from model.fin_file import Classifier
+from flask_cors import CORS
 # from base64 import b64encode
 from login import JWT
 
@@ -17,6 +19,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = 'this is the key'
 
 db = SQLAlchemy(app)
+
+CORS(app)
 
 
 def filter_dict(a: dict, escape_keys: list) -> dict:
@@ -42,6 +46,7 @@ class User(db.Model):
                       nullable=False)
     password = db.Column(db.String(80), nullable=False)
     notes = db.relationship('Note', backref="user", lazy='dynamic')
+    model = db.Column(db.LargeBinary)
 
     # def set_password(self, password):
     #     self.password_hash = generate_password_hash(password)
@@ -51,7 +56,7 @@ class User(db.Model):
 
     def get_dict(self):
         output = filter_dict(vars(self), escape_keys=[
-                             '_sa_instance_state', "password", "notes"])
+                             '_sa_instance_state', "password", "notes", "model"])
         return output
 
 
@@ -66,6 +71,7 @@ class Note(db.Model):
     content = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey(
         'user.id'))
+    model_idx = db.Column(db.Integer)
 
     def get_dict(self):
         return {
@@ -125,16 +131,27 @@ class NoteView(MethodView):
         note = Note(title=request.json.get('title', None),
                     content=request.json['content'])
         current_user.notes.append(note)
+
+        with Classifier(current_user) as model:
+            index = model.add_document(note.content)
+
+        note.model_idx = index
+
         db.session.commit()
         return jsonify({'success': "note created"}), 201
 
     @jwt.login_required
     def get(self, current_user):
         title = request.args.get("title", None)
+        keywords = request.args.get("keywords", None)
         if(title):
             notes = current_user.notes.filter_by(title=title).all()
             output = list(map(lambda x: x.get_dict(), notes))
             return jsonify({'notes': output})
+        elif(keywords):
+            with Classifier(current_user) as model:
+                docs = model.search_by_keywords(keywords)
+            return jsonify({"documents": docs})
         else:
             notes = current_user.notes.all()
             output = list(map(lambda x: x.get_dict(), notes))
@@ -147,6 +164,12 @@ class NoteView(MethodView):
         db.session.delete(note)
         db.session.commit()
         return jsonify({'success': "note deleted"}), 201
+
+
+@app.route("/model/")
+@jwt.login_required
+def getModel(current_user):
+    return "True" if(current_user.model) else "False", 200
 
 
 note_view = NoteView.as_view('note_api')
