@@ -31,6 +31,9 @@ class Classifier:
         new_topic_sizes, new_topic_nums = self.model.get_topic_sizes()
         return len(self.model.documents)-1
 
+    def delete_document(self, id):
+        self.model.delete_documents([id])
+
     def search_by_keywords(self, text):
         tokens = nltk.word_tokenize(text)
         stop_words = set(stopwords.words('english'))

@@ -142,6 +142,14 @@ class NoteView(MethodView):
 
     @jwt.login_required
     def get(self, current_user):
+        def filter_my_notes(item):
+            userNotes = current_user.notes.filter_by(
+                model_idx=item['idx']).all()
+            print(userNotes)
+            if(userNotes):
+                return True
+            else:
+                return False
         title = request.args.get("title", None)
         keywords = request.args.get("keywords", None)
         if(title):
@@ -150,8 +158,15 @@ class NoteView(MethodView):
             return jsonify({'notes': output})
         elif(keywords):
             with Classifier(current_user) as model:
-                docs = model.search_by_keywords(keywords)
-            return jsonify({"documents": docs})
+                try:
+                    docs = model.search_by_keywords(keywords)
+                except ValueError as e:
+                    return jsonify({"error": str(e)}), 400
+            result = {
+                "myNotes": list(filter(filter_my_notes, docs)),
+                "extra": docs
+            }
+            return jsonify(result)
         else:
             notes = current_user.notes.all()
             output = list(map(lambda x: x.get_dict(), notes))
@@ -161,6 +176,9 @@ class NoteView(MethodView):
     def delete(self, current_user):
         id = request.json['id']
         note = current_user.notes.filter_by(id=id).first()
+        with Classifier(current_user) as model:
+            model.delete_document(id)
+
         db.session.delete(note)
         db.session.commit()
         return jsonify({'success': "note deleted"}), 201
