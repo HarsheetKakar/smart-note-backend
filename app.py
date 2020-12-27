@@ -5,8 +5,8 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 from model.fin_file import Classifier
 from flask_cors import CORS
-# from base64 import b64encode
 from login import JWT
+from category import labels
 
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -121,7 +121,7 @@ class UserView(MethodView):
 
 
 user_view = UserView.as_view('user_api')
-app.add_url_rule('/user/',  view_func=user_view,
+app.add_url_rule('/user',  view_func=user_view,
                  methods=['GET', 'POST'])
 
 
@@ -145,7 +145,6 @@ class NoteView(MethodView):
         def filter_my_notes(item):
             userNotes = current_user.notes.filter_by(
                 model_idx=item['idx']).all()
-            print(userNotes)
             if(userNotes):
                 return True
             else:
@@ -184,14 +183,24 @@ class NoteView(MethodView):
         return jsonify({'success': "note deleted"}), 201
 
 
-@app.route("/model/")
+@app.route("/labels", methods=["POST"])
+@jwt.login_required
+def getLabels(current_user):
+    id = request.json["id"]
+    note = current_user.notes.filter_by(id=id).first()
+    print(note)
+    categories = labels(note)
+    return jsonify({"labels": categories})
+
+
+@app.route("/model")
 @jwt.login_required
 def getModel(current_user):
     return "True" if(current_user.model) else "False", 200
 
 
 note_view = NoteView.as_view('note_api')
-app.add_url_rule('/note/', view_func=note_view,
+app.add_url_rule('/note', view_func=note_view,
                  methods=['GET', 'POST', "DELETE"])
 
 
