@@ -3,7 +3,7 @@ from flask import Flask, jsonify, request, url_for, render_template, redirect, f
 from flask.views import MethodView
 from flask_sqlalchemy import SQLAlchemy
 import os
-from model.fin_file import Classifier
+# from model.fin_file import Classifier
 from flask_cors import CORS
 from login import JWT
 from category import labels
@@ -132,8 +132,8 @@ class NoteView(MethodView):
                     content=request.json['content'])
         current_user.notes.append(note)
 
-        with Classifier(current_user) as model:
-            index = model.add_document(note.content)
+        # with Classifier(current_user) as model:
+        #     index = model.add_document(note.content)
 
         note.model_idx = index
 
@@ -155,17 +155,17 @@ class NoteView(MethodView):
             notes = current_user.notes.filter_by(title=title).all()
             output = list(map(lambda x: x.get_dict(), notes))
             return jsonify({'notes': output})
-        elif(keywords):
-            with Classifier(current_user) as model:
-                try:
-                    docs = model.search_by_keywords(keywords)
-                except ValueError as e:
-                    return jsonify({"error": str(e)}), 400
-            result = {
-                "myNotes": list(filter(filter_my_notes, docs)),
-                "extra": docs
-            }
-            return jsonify(result)
+        # elif(keywords):
+        #     # with Classifier(current_user) as model:
+        #     #     try:
+        #     #         docs = model.search_by_keywords(keywords)
+        #     #     except ValueError as e:
+        #     #         return jsonify({"error": str(e)}), 400
+        #     result = {
+        #         "myNotes": list(filter(filter_my_notes, docs)),
+        #         # "extra": docs
+        #     }
+        #     return jsonify(result)
         else:
             notes = current_user.notes.all()
             output = list(map(lambda x: x.get_dict(), notes))
@@ -175,8 +175,8 @@ class NoteView(MethodView):
     def delete(self, current_user):
         id = request.json['id']
         note = current_user.notes.filter_by(id=id).first()
-        with Classifier(current_user) as model:
-            model.delete_document(id)
+        # with Classifier(current_user) as model:
+        #     model.delete_document(id)
 
         db.session.delete(note)
         db.session.commit()
