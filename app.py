@@ -20,7 +20,6 @@ app.secret_key = 'this is the key'
 
 db = SQLAlchemy(app)
 
-jwt = JWT(secret_key=app.secret_key, UserTable=User)
 
 CORS(app)
 
@@ -63,6 +62,9 @@ class User(db.Model):
         return output
 
 
+jwt = JWT(secret_key=app.secret_key, UserTable=User)
+
+
 class Note(db.Model):
     __tablename__ = "note"
 
@@ -86,8 +88,8 @@ class Category(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(80), nullable=True)
-    notes = db.relationship('Note', backref="user", lazy='dynamic'))
-    user_id=db.Column(db.Integer, db.ForeignKey(
+    notes = db.relationship('Note', backref="user", lazy='dynamic')
+    user_id = db.Column(db.Integer, db.ForeignKey(
         'user.id'))
 
     def get_dict(self):
@@ -151,19 +153,23 @@ class CategoryView(MethodView):
     @jwt.login_required
     def get(self, current_user):
         categories = current_user.categories.all()
-        output = list(map(lambda x:x.get_dict(), categories))
+        output = list(map(lambda x: x.get_dict(), categories))
         return jsonify({'categories': output})
 
-category_view = CategoryView.as_view('note_api')
+
+category_view = CategoryView.as_view('category_api')
 app.add_url_rule('/category', view_func=category_view,
                  methods=['GET', 'POST'])
+
 
 @app.route("/category/notes")
 @jwt.login_required
 def getNotesByCategory(current_user):
-    category = current_user.categories.filter_by(title=request.args.get("title", None)).all()
+    category = current_user.categories.filter_by(
+        title=request.args.get("title", None)).all()
     notes = map(lambda x: x.get_dict(), category.notes.all())
     return jsonify({"notes": notes})
+
 
 class NoteView(MethodView):
     @jwt.login_required
@@ -241,8 +247,6 @@ def getModel(current_user):
 
 note_view = NoteView.as_view('note_api')
 app.add_url_rule('/note', view_func=note_view,
-                 methods=['GET', 'POST', "DELETE"])
-app.add_url_rule('/note/', view_func=note_view,
                  methods=['GET', 'POST', "DELETE"])
 
 
