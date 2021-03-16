@@ -22,6 +22,9 @@ def labels(note):
     response = requests.request(
         "POST", url, headers=headers, data=json.dumps(payload), auth=('apikey', creds['apikey']))
     respJson = response.json()
-    categories = list(
-        set(map(lambda x: x["label"].split("/")[1], respJson['categories'])))
-    return categories
+    print(respJson)
+    if("categories" in respJson):
+        categories = list(
+            set(map(lambda x: x["label"].split("/")[1], respJson['categories'])))
+        return categories
+    return []

@@ -202,6 +202,8 @@ def getModel(current_user):
 note_view = NoteView.as_view('note_api')
 app.add_url_rule('/note', view_func=note_view,
                  methods=['GET', 'POST', "DELETE"])
+app.add_url_rule('/note/', view_func=note_view,
+                 methods=['GET', 'POST', "DELETE"])
 
 
 if __name__ == "__main__":
