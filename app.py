@@ -20,6 +20,8 @@ app.secret_key = 'this is the key'
 
 db = SQLAlchemy(app)
 
+jwt = JWT(secret_key=app.secret_key, UserTable=User)
+
 CORS(app)
 
 
@@ -46,6 +48,7 @@ class User(db.Model):
                       nullable=False)
     password = db.Column(db.String(80), nullable=False)
     notes = db.relationship('Note', backref="user", lazy='dynamic')
+    categories = db.relationship('Category', backref="user", lazy='dynamic')
     model = db.Column(db.LargeBinary)
 
     # def set_password(self, password):
@@ -56,11 +59,8 @@ class User(db.Model):
 
     def get_dict(self):
         output = filter_dict(vars(self), escape_keys=[
-                             '_sa_instance_state', "password", "notes", "model"])
+                             '_sa_instance_state', "password", "notes", "model", "categories"])
         return output
-
-
-jwt = JWT(secret_key=app.secret_key, UserTable=User)
 
 
 class Note(db.Model):
@@ -78,6 +78,21 @@ class Note(db.Model):
             'title': self.title,
             'content': self.content,
             "id": self.id
+        }
+
+
+class Category(db.Model):
+    __tablename__ = "category"
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(80), nullable=True)
+    notes = db.relationship('Note', backref="user", lazy='dynamic'))
+    user_id=db.Column(db.Integer, db.ForeignKey(
+        'user.id'))
+
+    def get_dict(self):
+        return {
+            'title': self.title,
         }
 
 # Views from here
@@ -124,6 +139,31 @@ user_view = UserView.as_view('user_api')
 app.add_url_rule('/user',  view_func=user_view,
                  methods=['GET', 'POST'])
 
+
+class CategoryView(MethodView):
+    @jwt.login_required
+    def post(self, current_user):
+        category = Category(title=request.json.get('title', None))
+        current_user.categories.append(category)
+        db.session.commit()
+        return jsonify({'success': "category created"}), 201
+
+    @jwt.login_required
+    def get(self, current_user):
+        categories = current_user.categories.all()
+        output = list(map(lambda x:x.get_dict(), categories))
+        return jsonify({'categories': output})
+
+category_view = CategoryView.as_view('note_api')
+app.add_url_rule('/category', view_func=category_view,
+                 methods=['GET', 'POST'])
+
+@app.route("/category/notes")
+@jwt.login_required
+def getNotesByCategory(current_user):
+    category = current_user.categories.filter_by(title=request.args.get("title", None)).all()
+    notes = map(lambda x: x.get_dict(), category.notes.all())
+    return jsonify({"notes": notes})
 
 class NoteView(MethodView):
     @jwt.login_required
