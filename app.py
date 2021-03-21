@@ -73,13 +73,18 @@ class Note(db.Model):
     content = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey(
         'user.id'))
-    model_idx = db.Column(db.Integer)
+    category_id = db.Column(db.Integer, db.ForeignKey(
+        'category.id'))
 
     def get_dict(self):
         return {
             'title': self.title,
             'content': self.content,
-            "id": self.id
+            "id": self.id,
+            'category': {
+                'id': self.category_id,
+                'title': self.category.title
+            }
         }
 
 
@@ -88,13 +93,14 @@ class Category(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(80), nullable=True)
-    notes = db.relationship('Note', backref="user", lazy='dynamic')
+    notes = db.relationship('Note', backref="category", lazy='dynamic')
     user_id = db.Column(db.Integer, db.ForeignKey(
         'user.id'))
 
     def get_dict(self):
         return {
             'title': self.title,
+            "id": self.id
         }
 
 # Views from here
@@ -176,6 +182,9 @@ class NoteView(MethodView):
     def post(self, current_user):
         note = Note(title=request.json.get('title', None),
                     content=request.json['content'])
+        category = current_user.categories.filter_by(
+            id=request.json['category_id']).first()
+        category.notes.append(note)
         current_user.notes.append(note)
 
         # with Classifier(current_user) as model:
